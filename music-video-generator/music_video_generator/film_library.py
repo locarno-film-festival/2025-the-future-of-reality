@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 import warnings
 import gc
+
 # Suppress specific PySceneDetect deprecation warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="scenedetect")
 
@@ -21,9 +22,17 @@ import numpy as np
 class FilmLibrary:
     """Manages film scene detection and clip library."""
 
-    def __init__(self, film_path, threshold=30.0, min_scene_len=1.0,
-                 force_regenerate=False, clips_library_dir="clips_library",
-                 detector='content', luma_only=False, adaptive_window_width=2):
+    def __init__(
+        self,
+        film_path,
+        threshold=30.0,
+        min_scene_len=1.0,
+        force_regenerate=False,
+        clips_library_dir="clips_library",
+        detector="content",
+        luma_only=False,
+        adaptive_window_width=2,
+    ):
         """Initialize FilmLibrary.
 
         Args:
@@ -97,7 +106,7 @@ class FilmLibrary:
             return False
 
         try:
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path, "r") as f:
                 self.metadata = json.load(f)
             return True
         except (json.JSONDecodeError, IOError):
@@ -116,10 +125,12 @@ class FilmLibrary:
         # Check if parameters match
         cached_params = self.metadata.get("scene_detection_params", {})
 
-        if (cached_params.get("threshold") == self.threshold and
-            cached_params.get("min_scene_len") == self.min_scene_len and
-            cached_params.get("detector", "content") == self.detector and
-            cached_params.get("luma_only", False) == self.luma_only):
+        if (
+            cached_params.get("threshold") == self.threshold
+            and cached_params.get("min_scene_len") == self.min_scene_len
+            and cached_params.get("detector", "content") == self.detector
+            and cached_params.get("luma_only", False) == self.luma_only
+        ):
             return True
 
         return False
@@ -156,7 +167,7 @@ class FilmLibrary:
         print(f"\n🎬 Detecting scenes in {self.film_name}...")
         print(f"   Detector: {self.detector}")
         print(f"   Threshold: {self.threshold}")
-        if self.detector in ('content', 'both'):
+        if self.detector in ("content", "both"):
             print(f"   Luma only: {self.luma_only}")
         print(f"   Min scene length: {self.min_scene_len}s")
 
@@ -167,37 +178,34 @@ class FilmLibrary:
             scene_manager = SceneManager()
 
             # Choose detector based on settings
-            if self.detector == 'adaptive':
+            if self.detector == "adaptive":
                 scene_manager.add_detector(
                     AdaptiveDetector(
                         adaptive_threshold=self.threshold,
-                        min_scene_len=int(self.min_scene_len * 30),  # Approximate frames
-                        window_width=self.adaptive_window_width
+                        min_scene_len=int(
+                            self.min_scene_len * 30
+                        ),  # Approximate frames
+                        window_width=self.adaptive_window_width,
                     )
                 )
-            elif self.detector == 'both':
+            elif self.detector == "both":
                 # Use both detectors - scene detected when EITHER triggers
                 print(f"   Using combined detection (content + adaptive)")
                 scene_manager.add_detector(
-                    ContentDetector(
-                        threshold=self.threshold,
-                        luma_only=self.luma_only
-                    )
+                    ContentDetector(threshold=self.threshold, luma_only=self.luma_only)
                 )
                 scene_manager.add_detector(
                     AdaptiveDetector(
-                        adaptive_threshold=self.threshold / 10,  # Scale threshold for adaptive
+                        adaptive_threshold=self.threshold
+                        / 10,  # Scale threshold for adaptive
                         min_scene_len=int(self.min_scene_len * 30),
-                        window_width=self.adaptive_window_width
+                        window_width=self.adaptive_window_width,
                     )
                 )
             else:
                 # Default: ContentDetector
                 scene_manager.add_detector(
-                    ContentDetector(
-                        threshold=self.threshold,
-                        luma_only=self.luma_only
-                    )
+                    ContentDetector(threshold=self.threshold, luma_only=self.luma_only)
                 )
 
             # Detect scenes
@@ -221,12 +229,12 @@ class FilmLibrary:
                     continue
 
                 scene_info = {
-                    'id': filtered_scene_id,  # Use sequential ID for kept scenes
-                    'start': start_time,
-                    'end': end_time,
-                    'duration': duration,
-                    'clip_filename': f"scene_{filtered_scene_id:04d}.mp4",
-                    'thumbnail_filename': f"thumb_{filtered_scene_id:04d}.jpg"
+                    "id": filtered_scene_id,  # Use sequential ID for kept scenes
+                    "start": start_time,
+                    "end": end_time,
+                    "duration": duration,
+                    "clip_filename": f"scene_{filtered_scene_id:04d}.mp4",
+                    "thumbnail_filename": f"thumb_{filtered_scene_id:04d}.jpg",
                 }
 
                 self.scenes.append(scene_info)
@@ -236,7 +244,9 @@ class FilmLibrary:
                 if (i + 1) % 20 == 0:
                     print(f"   Analyzed {i + 1}/{len(scene_list)} raw scenes...")
 
-            print(f"   ✓ Detected {len(self.scenes)} scenes (filtered by min_scene_len)")
+            print(
+                f"   ✓ Detected {len(self.scenes)} scenes (filtered by min_scene_len)"
+            )
 
             return self.scenes
 
@@ -284,15 +294,15 @@ class FilmLibrary:
                 print(f"   Extracting clip {i + 1}/{len(scenes)}...")
 
             try:
-                start_time = scene['start']
-                end_time = scene['end']
-                clip_path = self.clips_dir / scene['clip_filename']
+                start_time = scene["start"]
+                end_time = scene["end"]
+                clip_path = self.clips_dir / scene["clip_filename"]
 
                 # Validate bounds
                 if video_duration and start_time >= video_duration:
                     error_msg = f"Start time {start_time:.2f}s >= video duration {video_duration:.2f}s"
                     clips_failed.append((i, error_msg))
-                    scene['has_clip'] = False
+                    scene["has_clip"] = False
                     if len(clips_failed) <= 3:
                         print(f"   ⚠ Clip {i} failed: {error_msg}")
                     continue
@@ -308,7 +318,7 @@ class FilmLibrary:
                 if duration < 0.1:
                     error_msg = f"Duration {duration:.3f}s < 0.1s minimum"
                     clips_failed.append((i, error_msg))
-                    scene['has_clip'] = False
+                    scene["has_clip"] = False
                     if len(clips_failed) <= 3:
                         print(f"   ⚠ Clip {i} failed: {error_msg}")
                     continue
@@ -320,17 +330,17 @@ class FilmLibrary:
 
                 if success:
                     clips_exported += 1
-                    scene['has_clip'] = True
-                    scene['has_audio'] = has_audio
+                    scene["has_clip"] = True
+                    scene["has_audio"] = has_audio
                 else:
                     clips_failed.append((i, "FFmpeg extraction failed"))
-                    scene['has_clip'] = False
+                    scene["has_clip"] = False
                     if len(clips_failed) <= 3:
                         print(f"   ⚠ Clip {i} failed: FFmpeg extraction failed")
 
             except Exception as e:
                 clips_failed.append((i, str(e)))
-                scene['has_clip'] = False
+                scene["has_clip"] = False
                 if len(clips_failed) <= 3:
                     print(f"   ⚠ Clip {i} failed: {e}")
                 continue
@@ -348,10 +358,14 @@ class FilmLibrary:
         """Get video duration using ffprobe."""
         try:
             cmd = [
-                'ffprobe', '-v', 'error',
-                '-show_entries', 'format=duration',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
-                self.film_path
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                self.film_path,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True)
             return float(result.stdout.strip())
@@ -362,18 +376,25 @@ class FilmLibrary:
         """Check if video has audio stream using ffprobe."""
         try:
             cmd = [
-                'ffprobe', '-v', 'error',
-                '-select_streams', 'a',
-                '-show_entries', 'stream=codec_type',
-                '-of', 'default=noprint_wrappers=1:nokey=1',
-                self.film_path
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                self.film_path,
             ]
             result = subprocess.run(cmd, capture_output=True, text=True)
-            return 'audio' in result.stdout
+            return "audio" in result.stdout
         except Exception:
             return False
 
-    def _ffmpeg_extract_clip(self, start_time, duration, output_path, include_audio=True):
+    def _ffmpeg_extract_clip(
+        self, start_time, duration, output_path, include_audio=True
+    ):
         """Extract a clip using FFmpeg directly.
 
         Args:
@@ -387,29 +408,32 @@ class FilmLibrary:
         """
         try:
             cmd = [
-                'ffmpeg', '-y',  # Overwrite output
-                '-ss', str(start_time),  # Seek to start (before input for speed)
-                '-i', self.film_path,
-                '-t', str(duration),  # Duration
-                '-c:v', 'libx264',  # Video codec
-                '-preset', 'fast',
-                '-crf', '23',  # Quality (lower = better, 18-28 is good range)
+                "ffmpeg",
+                "-y",  # Overwrite output
+                "-ss",
+                str(start_time),  # Seek to start (before input for speed)
+                "-i",
+                self.film_path,
+                "-t",
+                str(duration),  # Duration
+                "-c:v",
+                "libx264",  # Video codec
+                "-preset",
+                "fast",
+                "-crf",
+                "23",  # Quality (lower = better, 18-28 is good range)
                 # No -r flag: preserves original frame rate
             ]
 
             if include_audio:
-                cmd.extend(['-c:a', 'aac', '-b:a', '128k'])  # Audio codec
+                cmd.extend(["-c:a", "aac", "-b:a", "128k"])  # Audio codec
             else:
-                cmd.extend(['-an'])  # No audio
+                cmd.extend(["-an"])  # No audio
 
             cmd.append(str(output_path))
 
             # Run FFmpeg silently
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True)
 
             return result.returncode == 0
 
@@ -438,11 +462,11 @@ class FilmLibrary:
             for i, scene in enumerate(scenes):
                 try:
                     # Get middle frame of scene
-                    middle_time = (scene['start'] + scene['end']) / 2
+                    middle_time = (scene["start"] + scene["end"]) / 2
                     frame = video.get_frame(middle_time)
 
                     # Save thumbnail
-                    thumb_path = self.thumbnails_dir / scene['thumbnail_filename']
+                    thumb_path = self.thumbnails_dir / scene["thumbnail_filename"]
                     thumb_height = 120
                     aspect_ratio = frame.shape[1] / frame.shape[0]
                     thumb_width = int(thumb_height * aspect_ratio)
@@ -484,39 +508,39 @@ class FilmLibrary:
             for scene in scenes:
                 try:
                     # Get middle frame
-                    middle_time = (scene['start'] + scene['end']) / 2
+                    middle_time = (scene["start"] + scene["end"]) / 2
                     frame = video.get_frame(middle_time)
 
                     # Color analysis
                     avg_color = np.mean(frame, axis=(0, 1))
-                    scene['avg_color_rgb'] = avg_color.tolist()
-                    scene['avg_color_hex'] = '#{:02x}{:02x}{:02x}'.format(
+                    scene["avg_color_rgb"] = avg_color.tolist()
+                    scene["avg_color_hex"] = "#{:02x}{:02x}{:02x}".format(
                         int(avg_color[0]), int(avg_color[1]), int(avg_color[2])
                     )
 
                     # Brightness analysis
                     gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-                    scene['avg_brightness'] = float(np.mean(gray))
+                    scene["avg_brightness"] = float(np.mean(gray))
 
                     # Pace analysis
-                    duration = scene['duration']
+                    duration = scene["duration"]
                     if duration < 2:
-                        scene['pace'] = 'fast'
+                        scene["pace"] = "fast"
                     elif duration > 10:
-                        scene['pace'] = 'slow'
+                        scene["pace"] = "slow"
                     else:
-                        scene['pace'] = 'medium'
+                        scene["pace"] = "medium"
 
                     # Position ratio in film
-                    scene['position_ratio'] = scene['start'] / video_duration
+                    scene["position_ratio"] = scene["start"] / video_duration
 
                 except Exception as e:
                     # Set defaults on failure
-                    scene['avg_brightness'] = 0.0
-                    scene['avg_color_rgb'] = [0.0, 0.0, 0.0]
-                    scene['avg_color_hex'] = '#000000'
-                    scene['pace'] = 'medium'
-                    scene['position_ratio'] = 0.0
+                    scene["avg_brightness"] = 0.0
+                    scene["avg_color_rgb"] = [0.0, 0.0, 0.0]
+                    scene["avg_color_hex"] = "#000000"
+                    scene["pace"] = "medium"
+                    scene["position_ratio"] = 0.0
                     failed_analyses += 1
                     continue
 
@@ -545,7 +569,7 @@ class FilmLibrary:
                 "duration": self.safe_float(video.duration),
                 "resolution": f"{video.w}x{video.h}",
                 "fps": self.safe_float(video.fps),
-                "codec": getattr(video, 'codec', 'unknown')
+                "codec": getattr(video, "codec", "unknown"),
             }
             video.close()
         except Exception:
@@ -553,7 +577,7 @@ class FilmLibrary:
                 "duration": 0.0,
                 "resolution": "unknown",
                 "fps": 0.0,
-                "codec": "unknown"
+                "codec": "unknown",
             }
 
         # Build metadata
@@ -565,17 +589,17 @@ class FilmLibrary:
                 "threshold": self.threshold,
                 "min_scene_len": self.min_scene_len,
                 "detector": self.detector,
-                "luma_only": self.luma_only
+                "luma_only": self.luma_only,
             },
             "film_properties": film_properties,
             "scenes": self.scenes,
-            "total_scenes": len(self.scenes)
+            "total_scenes": len(self.scenes),
         }
 
         # Save to JSON
         metadata_path = self.library_dir / "metadata.json"
         try:
-            with open(metadata_path, 'w') as f:
+            with open(metadata_path, "w") as f:
                 json.dump(metadata, f, indent=2)
 
             print(f"   ✓ Saved metadata: {metadata_path}")

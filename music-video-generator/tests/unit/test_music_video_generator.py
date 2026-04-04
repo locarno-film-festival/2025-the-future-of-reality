@@ -18,16 +18,16 @@ class TestMusicVideoGenerator:
         film_path.touch()
 
         library = FilmLibrary(str(film_path), clips_library_dir=str(tmp_path / "lib"))
-        library.scenes = [{'id': 0, 'start': 0, 'end': 2, 'duration': 2}]
+        library.scenes = [{"id": 0, "start": 0, "end": 2, "duration": 2}]
 
         song_path = tmp_path / "test.mp3"
         song_path.touch()
 
-        gen = MusicVideoGenerator(library, str(song_path), strategy='progressive')
+        gen = MusicVideoGenerator(library, str(song_path), strategy="progressive")
 
         assert gen.film_library == library
         assert gen.song_path == str(song_path)
-        assert gen.strategy == 'progressive'
+        assert gen.strategy == "progressive"
         assert gen.beat_skip == 1
 
     def test_init_with_invalid_song(self, tmp_path):
@@ -49,10 +49,12 @@ class TestMusicVideoGenerator:
         song_path.touch()
 
         with pytest.raises(ValueError):
-            MusicVideoGenerator(library, str(song_path), strategy='invalid')
+            MusicVideoGenerator(library, str(song_path), strategy="invalid")
 
-    @pytest.mark.skipif(not os.path.exists("test-assets/test_audio.wav"),
-                        reason="Test audio not available")
+    @pytest.mark.skipif(
+        not os.path.exists("test-assets/test_audio.wav"),
+        reason="Test audio not available",
+    )
     def test_analyze_audio(self, tmp_path):
         """Test audio analysis with librosa."""
         film_path = tmp_path / "test.mp4"
@@ -62,12 +64,12 @@ class TestMusicVideoGenerator:
         gen = MusicVideoGenerator(library, "test-assets/test_audio.wav")
         result = gen.analyze_audio()
 
-        assert 'duration' in result
-        assert 'bpm' in result
-        assert 'beats' in result
-        assert 'tempo_confidence' in result
-        assert result['duration'] > 0
-        assert len(result['beats']) > 0
+        assert "duration" in result
+        assert "bpm" in result
+        assert "beats" in result
+        assert "tempo_confidence" in result
+        assert result["duration"] > 0
+        assert len(result["beats"]) > 0
 
     def test_safe_float_conversion(self, tmp_path):
         """Test safe float conversion in generator."""
@@ -80,6 +82,7 @@ class TestMusicVideoGenerator:
         gen = MusicVideoGenerator(library, str(song_path))
 
         import numpy as np
+
         assert gen.safe_float(3.14) == 3.14
         assert gen.safe_float(np.float64(3.14)) == 3.14
         assert gen.safe_float("invalid") == 0.0
@@ -90,8 +93,9 @@ class TestMusicVideoGenerator:
         film_path.touch()
 
         library = FilmLibrary(str(film_path), clips_library_dir=str(tmp_path / "lib"))
-        library.scenes = [{'id': i, 'start': i, 'end': i+1, 'duration': 1}
-                          for i in range(10)]  # Only 10 scenes
+        library.scenes = [
+            {"id": i, "start": i, "end": i + 1, "duration": 1} for i in range(10)
+        ]  # Only 10 scenes
 
         song_path = tmp_path / "test.mp3"
         song_path.touch()
@@ -113,8 +117,9 @@ class TestMusicVideoGenerator:
         film_path.touch()
 
         library = FilmLibrary(str(film_path), clips_library_dir=str(tmp_path / "lib"))
-        library.scenes = [{'id': i, 'start': i, 'end': i+1, 'duration': 1}
-                          for i in range(100)]  # 100 scenes
+        library.scenes = [
+            {"id": i, "start": i, "end": i + 1, "duration": 1} for i in range(100)
+        ]  # 100 scenes
 
         song_path = tmp_path / "test.mp3"
         song_path.touch()
@@ -131,20 +136,22 @@ class TestMusicVideoGenerator:
         film_path.touch()
 
         library = FilmLibrary(str(film_path), clips_library_dir=str(tmp_path / "lib"))
-        library.scenes = [{'id': i, 'start': i*10, 'end': (i+1)*10, 'duration': 10}
-                          for i in range(100)]
+        library.scenes = [
+            {"id": i, "start": i * 10, "end": (i + 1) * 10, "duration": 10}
+            for i in range(100)
+        ]
 
         song_path = tmp_path / "test.mp3"
         song_path.touch()
 
-        gen = MusicVideoGenerator(library, str(song_path), strategy='progressive')
+        gen = MusicVideoGenerator(library, str(song_path), strategy="progressive")
         gen.beat_times = [i * 0.5 for i in range(50)]
 
         selected = gen.select_scenes()
 
         assert len(selected) == 49  # Note: num_beats - 1
         # Progressive should sample evenly from start to end
-        assert selected[0]['scene']['id'] < selected[-1]['scene']['id']
+        assert selected[0]["scene"]["id"] < selected[-1]["scene"]["id"]
 
     def test_select_random_strategy(self, tmp_path):
         """Test random scene selection strategy."""
@@ -152,13 +159,15 @@ class TestMusicVideoGenerator:
         film_path.touch()
 
         library = FilmLibrary(str(film_path), clips_library_dir=str(tmp_path / "lib"))
-        library.scenes = [{'id': i, 'start': i*10, 'end': (i+1)*10, 'duration': 10}
-                          for i in range(20)]
+        library.scenes = [
+            {"id": i, "start": i * 10, "end": (i + 1) * 10, "duration": 10}
+            for i in range(20)
+        ]
 
         song_path = tmp_path / "test.mp3"
         song_path.touch()
 
-        gen = MusicVideoGenerator(library, str(song_path), strategy='random')
+        gen = MusicVideoGenerator(library, str(song_path), strategy="random")
         gen.beat_times = [i * 0.5 for i in range(30)]
 
         selected = gen.select_scenes()
@@ -171,18 +180,20 @@ class TestMusicVideoGenerator:
         film_path.touch()
 
         library = FilmLibrary(str(film_path), clips_library_dir=str(tmp_path / "lib"))
-        library.scenes = [{'id': i, 'start': i*10, 'end': (i+1)*10, 'duration': 10}
-                          for i in range(50)]
+        library.scenes = [
+            {"id": i, "start": i * 10, "end": (i + 1) * 10, "duration": 10}
+            for i in range(50)
+        ]
 
         song_path = tmp_path / "test.mp3"
         song_path.touch()
 
-        gen = MusicVideoGenerator(library, str(song_path), strategy='forward_only')
+        gen = MusicVideoGenerator(library, str(song_path), strategy="forward_only")
         gen.beat_times = [i * 0.5 for i in range(30)]
 
         selected = gen.select_scenes()
 
         assert len(selected) == 29  # Note: num_beats - 1
         # Forward-only should never backtrack
-        scene_ids = [s['scene']['id'] for s in selected]
+        scene_ids = [s["scene"]["id"] for s in selected]
         assert scene_ids == sorted(scene_ids)

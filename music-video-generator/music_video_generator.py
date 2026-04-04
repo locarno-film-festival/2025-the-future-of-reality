@@ -3,5 +3,5 @@
 import sys
 from music_video_generator.cli import main
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

@@ -1,0 +1,17 @@
+name: Notify Locarno repo to sync
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger subtree sync
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.LOCARNO_SYNC_TOKEN }}" \
+            https://api.github.com/repos/locarno-film-festival/2025-the-future-of-reality/dispatches \
+            -d '{"event_type":"sync-music-video-generator"}'

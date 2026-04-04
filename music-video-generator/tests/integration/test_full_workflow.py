@@ -8,9 +8,11 @@ from music_video_generator.music_video_generator import MusicVideoGenerator
 
 
 @pytest.mark.skipif(
-    not (os.path.exists("test-assets/test_video.mp4") and
-         os.path.exists("test-assets/test_audio.wav")),
-    reason="Test assets not available"
+    not (
+        os.path.exists("test-assets/test_video.mp4")
+        and os.path.exists("test-assets/test_audio.wav")
+    ),
+    reason="Test assets not available",
 )
 class TestFullWorkflow:
     """Test complete end-to-end workflow."""
@@ -21,7 +23,7 @@ class TestFullWorkflow:
         library = FilmLibrary(
             "test-assets/test_video.mp4",
             threshold=30.0,
-            clips_library_dir=str(tmp_path / "clips_lib")
+            clips_library_dir=str(tmp_path / "clips_lib"),
         )
 
         # Detect scenes
@@ -49,15 +51,15 @@ class TestFullWorkflow:
         generator = MusicVideoGenerator(
             library,
             "test-assets/test_audio.wav",
-            strategy='progressive',
+            strategy="progressive",
             beat_skip=2,  # Use every 2nd beat for speed
-            output_dir=str(tmp_path / "output")
+            output_dir=str(tmp_path / "output"),
         )
 
         # Analyze audio
         music_analysis = generator.analyze_audio()
         # Note: Beat detection may fail with synthetic audio, but we can still test the workflow
-        beats_detected = music_analysis['beats_detected']
+        beats_detected = music_analysis["beats_detected"]
 
         if beats_detected > 0:
             # Validate ratio (only if beats detected)
@@ -76,7 +78,9 @@ class TestFullWorkflow:
             # Beat detection failed, but workflow still executed
             print(f"\n⚠ Integration test passed with warnings:")
             print(f"   Scenes: {len(library.scenes)}")
-            print(f"   Beats: {beats_detected} (beat detection failed with synthetic audio)")
+            print(
+                f"   Beats: {beats_detected} (beat detection failed with synthetic audio)"
+            )
             print(f"   Workflow completed successfully despite beat detection issue")
 
     def test_cache_reuse(self, tmp_path):
@@ -85,7 +89,7 @@ class TestFullWorkflow:
         library1 = FilmLibrary(
             "test-assets/test_video.mp4",
             threshold=30.0,
-            clips_library_dir=str(tmp_path / "clips_lib")
+            clips_library_dir=str(tmp_path / "clips_lib"),
         )
 
         scenes = library1.detect_scenes()
@@ -97,7 +101,7 @@ class TestFullWorkflow:
         library2 = FilmLibrary(
             "test-assets/test_video.mp4",
             threshold=30.0,
-            clips_library_dir=str(tmp_path / "clips_lib")
+            clips_library_dir=str(tmp_path / "clips_lib"),
         )
 
         assert library2._check_cache() is True
