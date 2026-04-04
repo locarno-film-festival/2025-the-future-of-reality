@@ -1,0 +1,79 @@
+# Pre-commit hooks configuration for the music video project
+# See https://pre-commit.com for more information
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=50000']  # Allow large video/audio files up to 50MB
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: check-docstring-first
+
+  # Python code formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+        language_version: python3
+        args: [--line-length=88]
+
+  # Python import sorting with isort
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  # Python linting with flake8
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=88, --extend-ignore=E203,W503]
+
+  # Security scanning with bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [-r, ., -f, json, -o, bandit-report.json]
+        pass_filenames: false
+
+  # Run pytest on modified Python files
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: Run pytest
+        entry: python -m pytest
+        language: python
+        files: '\.py$'
+        stages: [commit]
+        pass_filenames: false
+        args: [tests/unit/, -x, --tb=short, --disable-warnings]
+        additional_dependencies: 
+          - pytest
+          - pytest-cov
+          - librosa
+          - moviepy
+          - scenedetect
+          - opencv-python
+          - matplotlib
+          - numpy
+
+  # Check for music video project specific patterns
+  - repo: local
+    hooks:
+      - id: safe-numpy-check
+        name: Check for safe numpy operations
+        entry: python scripts/check_numpy_safety.py
+        language: system
+        files: '\.py$'
+
+default_stages: [commit, push]
