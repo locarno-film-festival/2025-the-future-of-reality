@@ -35,6 +35,7 @@ class TestFilmLibrary:
         library = FilmLibrary(str(film_path))
 
         import numpy as np
+
         assert library.safe_float(3.14) == 3.14
         assert library.safe_float(np.float64(3.14)) == 3.14
         assert library.safe_float("invalid") == 0.0
@@ -47,6 +48,7 @@ class TestFilmLibrary:
         library = FilmLibrary(str(film_path))
 
         import numpy as np
+
         assert library.safe_int(42) == 42
         assert library.safe_int(np.int64(42)) == 42
         assert library.safe_int("invalid") == 0
@@ -68,15 +70,14 @@ class TestFilmLibrary:
         film_path.touch()
 
         # Create library and save metadata
-        library = FilmLibrary(str(film_path), threshold=30.0, clips_library_dir=str(tmp_path / "lib"))
+        library = FilmLibrary(
+            str(film_path), threshold=30.0, clips_library_dir=str(tmp_path / "lib")
+        )
         library.library_dir.mkdir(parents=True, exist_ok=True)
 
         metadata = {
-            "scene_detection_params": {
-                "threshold": 30.0,
-                "min_scene_len": 1.0
-            },
-            "total_scenes": 10
+            "scene_detection_params": {"threshold": 30.0, "min_scene_len": 1.0},
+            "total_scenes": 10,
         }
 
         with open(library.library_dir / "metadata.json", "w") as f:
@@ -90,15 +91,12 @@ class TestFilmLibrary:
         film_path = tmp_path / "test.mp4"
         film_path.touch()
 
-        library = FilmLibrary(str(film_path), threshold=25.0, clips_library_dir=str(tmp_path / "lib"))
+        library = FilmLibrary(
+            str(film_path), threshold=25.0, clips_library_dir=str(tmp_path / "lib")
+        )
         library.library_dir.mkdir(parents=True, exist_ok=True)
 
-        metadata = {
-            "scene_detection_params": {
-                "threshold": 30.0,
-                "min_scene_len": 1.0
-            }
-        }
+        metadata = {"scene_detection_params": {"threshold": 30.0, "min_scene_len": 1.0}}
 
         with open(library.library_dir / "metadata.json", "w") as f:
             json.dump(metadata, f)
@@ -116,15 +114,12 @@ class TestFilmLibrary:
 
         # Create valid metadata
         metadata = {
-            "scene_detection_params": {
-                "threshold": 30.0,
-                "min_scene_len": 1.0
-            },
+            "scene_detection_params": {"threshold": 30.0, "min_scene_len": 1.0},
             "scenes": [
                 {"id": 0, "start": 0.0, "end": 2.0, "duration": 2.0},
-                {"id": 1, "start": 2.0, "end": 4.0, "duration": 2.0}
+                {"id": 1, "start": 2.0, "end": 4.0, "duration": 2.0},
             ],
-            "total_scenes": 2
+            "total_scenes": 2,
         }
 
         with open(library.library_dir / "metadata.json", "w") as f:
@@ -153,8 +148,10 @@ class TestFilmLibrary:
 
         assert result is False
 
-    @pytest.mark.skipif(not os.path.exists("test-assets/test_video.mp4"),
-                        reason="Test video not available")
+    @pytest.mark.skipif(
+        not os.path.exists("test-assets/test_video.mp4"),
+        reason="Test video not available",
+    )
     def test_detect_scenes(self):
         """Test scene detection with real video."""
         library = FilmLibrary("test-assets/test_video.mp4", threshold=30.0)
@@ -166,19 +163,32 @@ class TestFilmLibrary:
         assert all("end" in s for s in scenes)
         assert all("duration" in s for s in scenes)
 
-    @pytest.mark.skipif(not os.path.exists("test-assets/test_video.mp4"),
-                        reason="Test video not available")
+    @pytest.mark.skipif(
+        not os.path.exists("test-assets/test_video.mp4"),
+        reason="Test video not available",
+    )
     def test_extract_clips(self, tmp_path):
         """Test clip extraction from detected scenes."""
-        library = FilmLibrary("test-assets/test_video.mp4",
-                             clips_library_dir=str(tmp_path))
+        library = FilmLibrary(
+            "test-assets/test_video.mp4", clips_library_dir=str(tmp_path)
+        )
 
         # Create sample scenes
         library.scenes = [
-            {'id': 0, 'start': 0.0, 'end': 2.0, 'duration': 2.0,
-             'clip_filename': 'scene_0000.mp4'},
-            {'id': 1, 'start': 2.0, 'end': 4.0, 'duration': 2.0,
-             'clip_filename': 'scene_0001.mp4'}
+            {
+                "id": 0,
+                "start": 0.0,
+                "end": 2.0,
+                "duration": 2.0,
+                "clip_filename": "scene_0000.mp4",
+            },
+            {
+                "id": 1,
+                "start": 2.0,
+                "end": 4.0,
+                "duration": 2.0,
+                "clip_filename": "scene_0001.mp4",
+            },
         ]
 
         library.clips_dir.mkdir(parents=True, exist_ok=True)
@@ -188,42 +198,57 @@ class TestFilmLibrary:
         assert count > 0
         assert (library.clips_dir / "scene_0000.mp4").exists()
 
-    @pytest.mark.skipif(not os.path.exists("test-assets/test_video.mp4"),
-                        reason="Test video not available")
+    @pytest.mark.skipif(
+        not os.path.exists("test-assets/test_video.mp4"),
+        reason="Test video not available",
+    )
     def test_generate_thumbnails_and_analyze(self, tmp_path):
         """Test thumbnail generation and scene analysis."""
-        library = FilmLibrary("test-assets/test_video.mp4",
-                             clips_library_dir=str(tmp_path))
+        library = FilmLibrary(
+            "test-assets/test_video.mp4", clips_library_dir=str(tmp_path)
+        )
 
         library.thumbnails_dir.mkdir(parents=True, exist_ok=True)
 
         # Create sample scenes
         library.scenes = [
-            {'id': 0, 'start': 1.0, 'end': 3.0, 'duration': 2.0,
-             'thumbnail_filename': 'thumb_0000.jpg'}
+            {
+                "id": 0,
+                "start": 1.0,
+                "end": 3.0,
+                "duration": 2.0,
+                "thumbnail_filename": "thumb_0000.jpg",
+            }
         ]
 
         library.generate_thumbnails(library.scenes)
         library.analyze_scenes(library.scenes)
 
         assert (library.thumbnails_dir / "thumb_0000.jpg").exists()
-        assert 'avg_brightness' in library.scenes[0]
-        assert 'avg_color_hex' in library.scenes[0]
-        assert 'pace' in library.scenes[0]
+        assert "avg_brightness" in library.scenes[0]
+        assert "avg_color_hex" in library.scenes[0]
+        assert "pace" in library.scenes[0]
 
     def test_save_and_load_metadata(self, tmp_path):
         """Test saving and loading metadata."""
         film_path = tmp_path / "test.mp4"
         film_path.touch()
 
-        library = FilmLibrary(str(film_path), threshold=25.0,
-                             clips_library_dir=str(tmp_path / "lib"))
+        library = FilmLibrary(
+            str(film_path), threshold=25.0, clips_library_dir=str(tmp_path / "lib")
+        )
         library.library_dir.mkdir(parents=True, exist_ok=True)
 
         # Add sample scenes
         library.scenes = [
-            {'id': 0, 'start': 0.0, 'end': 2.0, 'duration': 2.0,
-             'avg_brightness': 100.0, 'pace': 'fast'}
+            {
+                "id": 0,
+                "start": 0.0,
+                "end": 2.0,
+                "duration": 2.0,
+                "avg_brightness": 100.0,
+                "pace": "fast",
+            }
         ]
 
         # Save metadata
@@ -233,10 +258,11 @@ class TestFilmLibrary:
         assert (library.library_dir / "metadata.json").exists()
 
         # Load in new instance
-        library2 = FilmLibrary(str(film_path), threshold=25.0,
-                              clips_library_dir=str(tmp_path / "lib"))
+        library2 = FilmLibrary(
+            str(film_path), threshold=25.0, clips_library_dir=str(tmp_path / "lib")
+        )
         success = library2._load_from_cache()
 
         assert success is True
         assert len(library2.scenes) == 1
-        assert library2.scenes[0]['id'] == 0
+        assert library2.scenes[0]["id"] == 0

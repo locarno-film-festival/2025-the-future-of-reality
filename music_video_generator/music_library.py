@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from contextlib import contextmanager
 import warnings
+
 warnings.filterwarnings("ignore")
 
 import librosa
@@ -16,7 +17,7 @@ import numpy as np
 @contextmanager
 def suppress_stderr():
     """Temporarily suppress stderr (for noisy audio decoders)."""
-    with open(os.devnull, 'w') as devnull:
+    with open(os.devnull, "w") as devnull:
         old_stderr = sys.stderr
         sys.stderr = devnull
         try:
@@ -28,7 +29,9 @@ def suppress_stderr():
 class MusicLibrary:
     """Manages audio analysis and caching."""
 
-    def __init__(self, song_path, force_regenerate=False, music_library_dir="music_library"):
+    def __init__(
+        self, song_path, force_regenerate=False, music_library_dir="music_library"
+    ):
         """Initialize MusicLibrary.
 
         Args:
@@ -91,7 +94,7 @@ class MusicLibrary:
             return False
 
         try:
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path, "r") as f:
                 self.metadata = json.load(f)
             return True
         except (json.JSONDecodeError, IOError):
@@ -147,10 +150,7 @@ class MusicLibrary:
                 audio_data, sample_rate = librosa.load(self.song_path)
 
             # Beat tracking
-            tempo, beat_frames = librosa.beat.beat_track(
-                y=audio_data,
-                sr=sample_rate
-            )
+            tempo, beat_frames = librosa.beat.beat_track(y=audio_data, sr=sample_rate)
 
             # Convert beat frames to time
             beat_times = librosa.frames_to_time(beat_frames, sr=sample_rate)
@@ -166,12 +166,12 @@ class MusicLibrary:
             self.beat_times = [self.safe_float(t) for t in beat_times]
 
             analysis = {
-                'duration': self.safe_float(duration),
-                'bpm': self.safe_float(tempo_scalar),
-                'beats_detected': len(beat_times),
-                'beats': self.beat_times,
-                'tempo_confidence': 0.85,  # Placeholder, librosa doesn't provide this
-                'sample_rate': self.safe_int(sample_rate)
+                "duration": self.safe_float(duration),
+                "bpm": self.safe_float(tempo_scalar),
+                "beats_detected": len(beat_times),
+                "beats": self.beat_times,
+                "tempo_confidence": 0.85,  # Placeholder, librosa doesn't provide this
+                "sample_rate": self.safe_int(sample_rate),
             }
 
             print(f"   Duration: {self.safe_float(duration):.1f}s")
@@ -185,12 +185,12 @@ class MusicLibrary:
 
             # Return defaults
             return {
-                'duration': 0.0,
-                'bpm': 120.0,
-                'beats_detected': 0,
-                'beats': [],
-                'tempo_confidence': 0.0,
-                'sample_rate': 22050
+                "duration": 0.0,
+                "bpm": 120.0,
+                "beats_detected": 0,
+                "beats": [],
+                "tempo_confidence": 0.0,
+                "sample_rate": 22050,
             }
 
     def save_metadata(self, analysis):
@@ -209,18 +209,18 @@ class MusicLibrary:
             "song_path": self.song_path,
             "song_name": self.song_name,
             "created_at": datetime.now().isoformat(),
-            "duration": analysis['duration'],
-            "bpm": analysis['bpm'],
-            "beats_detected": analysis['beats_detected'],
-            "beats": analysis['beats'],
-            "tempo_confidence": analysis['tempo_confidence'],
-            "sample_rate": analysis['sample_rate']
+            "duration": analysis["duration"],
+            "bpm": analysis["bpm"],
+            "beats_detected": analysis["beats_detected"],
+            "beats": analysis["beats"],
+            "tempo_confidence": analysis["tempo_confidence"],
+            "sample_rate": analysis["sample_rate"],
         }
 
         # Save to JSON
         metadata_path = self.library_dir / "metadata.json"
         try:
-            with open(metadata_path, 'w') as f:
+            with open(metadata_path, "w") as f:
                 json.dump(metadata, f, indent=2)
 
             print(f"   ✓ Saved metadata: {metadata_path}")

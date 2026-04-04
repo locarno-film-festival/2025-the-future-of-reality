@@ -26,48 +26,90 @@ Examples:
 
   # Use random strategy with every 4th beat
   python music_video_generator.py --film movie.mp4 --song track.mp3 --strategy random --beat-skip 4
-        """
+        """,
     )
 
     # Operation mode
-    parser.add_argument('--prepare', action='store_true',
-                       help='Prepare libraries only (no music video generation)')
+    parser.add_argument(
+        "--prepare",
+        action="store_true",
+        help="Prepare libraries only (no music video generation)",
+    )
 
     # Required arguments
-    parser.add_argument('--film', type=str,
-                       help='Path to film/video file')
-    parser.add_argument('--song', type=str,
-                       help='Path to song/audio file')
+    parser.add_argument("--film", type=str, help="Path to film/video file")
+    parser.add_argument("--song", type=str, help="Path to song/audio file")
 
     # Scene detection parameters
-    parser.add_argument('--threshold', type=float, default=30.0,
-                       help='Scene detection threshold (10-50 range, default: 30.0). Lower = more sensitive.')
-    parser.add_argument('--min-scene-len', type=float, default=1.0,
-                       help='Minimum scene duration in seconds (default: 1.0)')
-    parser.add_argument('--detector', type=str, default='content',
-                       choices=['content', 'adaptive', 'both'],
-                       help='Scene detector type (default: content). Use adaptive for varying lighting, both for combined detection.')
-    parser.add_argument('--luma-only', action='store_true',
-                       help='Use only luminance for detection (ContentDetector only). Better for dark scenes.')
-    parser.add_argument('--force-regenerate-clips', action='store_true',
-                       help='Force regeneration of film clips even if cache exists')
-    parser.add_argument('--force-regenerate-music', action='store_true',
-                       help='Force regeneration of music analysis even if cache exists')
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=30.0,
+        help="Scene detection threshold (10-50 range, default: 30.0). Lower = more sensitive.",
+    )
+    parser.add_argument(
+        "--min-scene-len",
+        type=float,
+        default=1.0,
+        help="Minimum scene duration in seconds (default: 1.0)",
+    )
+    parser.add_argument(
+        "--detector",
+        type=str,
+        default="content",
+        choices=["content", "adaptive", "both"],
+        help="Scene detector type (default: content). Use adaptive for varying lighting, both for combined detection.",
+    )
+    parser.add_argument(
+        "--luma-only",
+        action="store_true",
+        help="Use only luminance for detection (ContentDetector only). Better for dark scenes.",
+    )
+    parser.add_argument(
+        "--force-regenerate-clips",
+        action="store_true",
+        help="Force regeneration of film clips even if cache exists",
+    )
+    parser.add_argument(
+        "--force-regenerate-music",
+        action="store_true",
+        help="Force regeneration of music analysis even if cache exists",
+    )
 
     # Music video generation parameters
-    parser.add_argument('--strategy', type=str, default='progressive',
-                       choices=['progressive', 'random', 'forward_only', 'no_repeat'],
-                       help='Scene selection strategy (default: progressive)')
-    parser.add_argument('--beat-skip', type=int, default=1,
-                       help='Use every Nth beat (1=all beats, 2=every other, etc. Default: 1)')
+    parser.add_argument(
+        "--strategy",
+        type=str,
+        default="progressive",
+        choices=["progressive", "random", "forward_only", "no_repeat"],
+        help="Scene selection strategy (default: progressive)",
+    )
+    parser.add_argument(
+        "--beat-skip",
+        type=int,
+        default=1,
+        help="Use every Nth beat (1=all beats, 2=every other, etc. Default: 1)",
+    )
 
     # Output directories
-    parser.add_argument('--clips-library-dir', type=str, default='clips_library',
-                       help='Directory for film clip library (default: clips_library)')
-    parser.add_argument('--music-library-dir', type=str, default='music_library',
-                       help='Directory for music analysis library (default: music_library)')
-    parser.add_argument('--output-dir', type=str, default='music_videos',
-                       help='Directory for music video outputs (default: music_videos)')
+    parser.add_argument(
+        "--clips-library-dir",
+        type=str,
+        default="clips_library",
+        help="Directory for film clip library (default: clips_library)",
+    )
+    parser.add_argument(
+        "--music-library-dir",
+        type=str,
+        default="music_library",
+        help="Directory for music analysis library (default: music_library)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="music_videos",
+        help="Directory for music video outputs (default: music_videos)",
+    )
 
     args = parser.parse_args()
 
@@ -84,11 +126,13 @@ Examples:
             parser.error("--prepare requires at least --film or --song")
 
     # Print header
-    print("""
+    print(
+        """
     ╔══════════════════════════════════════════════════════════════╗
     ║         MUSIC VIDEO GENERATOR v2.0                           ║
     ╠══════════════════════════════════════════════════════════════╣
-    """)
+    """
+    )
 
     try:
         library = None
@@ -103,7 +147,9 @@ Examples:
                 print(f"    ║  Luma only: True{'':<43} ║")
             if args.song:
                 print(f"    ║  Song: {Path(args.song).name:<53} ║")
-            print("    ╚══════════════════════════════════════════════════════════════╝\n")
+            print(
+                "    ╚══════════════════════════════════════════════════════════════╝\n"
+            )
 
             library = FilmLibrary(
                 args.film,
@@ -112,7 +158,7 @@ Examples:
                 force_regenerate=args.force_regenerate_clips,
                 clips_library_dir=args.clips_library_dir,
                 detector=args.detector,
-                luma_only=args.luma_only
+                luma_only=args.luma_only,
             )
 
             # Check cache or generate
@@ -123,7 +169,9 @@ Examples:
             elif not args.prepare and library._load_metadata():
                 # When not in prepare mode, use existing cache regardless of parameters
                 cached_params = library.metadata.get("scene_detection_params", {})
-                print(f"📦 Using cached film clips (detected with: {cached_params.get('detector', 'content')}, threshold={cached_params.get('threshold', 30.0)})")
+                print(
+                    f"📦 Using cached film clips (detected with: {cached_params.get('detector', 'content')}, threshold={cached_params.get('threshold', 30.0)})"
+                )
                 library.scenes = library.metadata.get("scenes", [])
                 needs_generate = False
             elif library._check_cache():
@@ -169,12 +217,14 @@ Examples:
         if args.song:
             if not args.film:
                 print(f"    ║  Song: {Path(args.song).name:<53} ║")
-                print("    ╚══════════════════════════════════════════════════════════════╝\n")
+                print(
+                    "    ╚══════════════════════════════════════════════════════════════╝\n"
+                )
 
             music_lib = MusicLibrary(
                 args.song,
                 force_regenerate=args.force_regenerate_music,
-                music_library_dir=args.music_library_dir
+                music_library_dir=args.music_library_dir,
             )
 
             # Check cache or generate
@@ -186,7 +236,7 @@ Examples:
 
                 # Analyze audio
                 analysis = music_lib.analyze_audio()
-                if not analysis['beats']:
+                if not analysis["beats"]:
                     print("✗ Audio analysis failed")
                     return 1
 
@@ -216,12 +266,12 @@ Examples:
             strategy=args.strategy,
             beat_skip=args.beat_skip,
             output_dir=args.output_dir,
-            music_library=music_lib
+            music_library=music_lib,
         )
 
         # Analyze audio
         music_analysis = generator.analyze_audio()
-        if not music_analysis['beats']:
+        if not music_analysis["beats"]:
             print("✗ Audio analysis failed")
             return 1
 
@@ -257,9 +307,10 @@ Examples:
     except Exception as e:
         print(f"\n✗ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
