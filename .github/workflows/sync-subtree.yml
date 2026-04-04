@@ -1,0 +1,28 @@
+name: Sync music-video-generator subtree
+
+on:
+  repository_dispatch:
+    types: [sync-music-video-generator]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SUBTREE_SYNC_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync subtree
+        run: |
+          git subtree pull --prefix=music-video-generator https://github.com/bgarakani/music-video-generator.git main --squash -m "chore: sync music-video-generator subtree"
+
+      - name: Push changes
+        run: git push
