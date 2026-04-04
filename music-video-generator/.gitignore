@@ -1,0 +1,41 @@
+# macOS & editors
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+
+# Project-specific
+.claude/
+.worktrees/
+archival_output/
+experiments/
+films/
+music/
+clips_library/
+music_library/
+music_videos/
+
+# Ignore all media files everywhere
+*.mp3
+*.m4a
+*.wav
+*.flac
+*.ogg
+*.aac
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.wmv
+*.jpg
+*.jpeg
+
