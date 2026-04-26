@@ -12,7 +12,7 @@ This project is a **Music Video Generation & Archival Remix Engine** that create
 ## Key Technologies
 - **Scene Detection**: PySceneDetect with ContentDetector
 - **Audio Analysis**: librosa for beat detection and tempo analysis
-- **Video Processing**: MoviePy for video manipulation and assembly
+- **Video Processing**: FFmpeg (via subprocess) for clip extraction, trimming, and assembly; OpenCV for frame analysis and thumbnails
 - **AI Analysis**: Computer vision for scene understanding
 
 ## Primary Use Cases

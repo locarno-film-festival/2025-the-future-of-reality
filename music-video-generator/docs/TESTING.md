@@ -360,7 +360,7 @@ python acceptance_test.py       # Full acceptance test
 ### Writing Effective Tests
 1. **Test one thing at a time**: Each test should verify a single behavior
 2. **Use descriptive names**: Test names should explain what they verify
-3. **Mock external dependencies**: Use mocks for librosa, moviepy, etc.
+3. **Mock external dependencies**: Use mocks for librosa, FFmpeg subprocess calls, etc.
 4. **Clean up resources**: Use fixtures for temporary files/directories
 5. **Assert meaningful conditions**: Don't just test that code runs
 
@@ -399,7 +399,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 ffmpeg -version
 
 # Verify Python dependencies
-python -c "import moviepy, librosa, scenedetect; print('All imports successful')"
+python -c "import librosa, scenedetect, cv2; print('All imports successful')"
 ```
 
 For additional help, check the project issues or create a new issue with:

@@ -12,7 +12,7 @@ Parallel Analysis
     ↓
 Synchronization Engine
     ↓
-Video Assembly (MoviePy)
+Video Assembly (FFmpeg)
     ↓
 Output Generation (Video + Reports)
 ```
@@ -105,7 +105,7 @@ class BaseGenerator:
 ## Critical Implementation Paths
 
 ### Scene Detection Flow
-1. **Video Loading**: MoviePy VideoFileClip creation
+1. **Video Loading**: OpenCV VideoCapture / ffprobe for properties
 2. **Scene Analysis**: PySceneDetect ContentDetector processing
 3. **Threshold Tuning**: Adaptive threshold based on content type
 4. **Metadata Extraction**: Scene timing and statistical analysis
@@ -122,7 +122,7 @@ class BaseGenerator:
 1. **Clip Extraction**: Individual scene clip creation
 2. **Duration Calculation**: Beat-to-scene timing mapping
 3. **Transition Planning**: Cut point optimization
-4. **Assembly Process**: MoviePy concatenation
+4. **Assembly Process**: FFmpeg concat demuxer (with audio attachment)
 5. **Quality Control**: Output validation and error checking
 
 ### Report Generation Flow

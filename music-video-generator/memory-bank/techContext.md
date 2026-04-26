@@ -69,10 +69,10 @@ music_video_project/
 - ffprobe used for video duration and audio stream detection
 - Completely bypasses MoviePy's problematic logger/subprocess handling
 
-**MoviePy (Thumbnails & Analysis Only)**
-- Only used for thumbnail generation and scene analysis (frame extraction)
-- Uses `audio=False` which avoids logger issues
-- Not used for any video encoding/writing operations
+**OpenCV (Thumbnails & Frame Analysis)**
+- Used for thumbnail generation and per-scene frame analysis (color, brightness, etc.)
+- Reads frames via `cv2.VideoCapture` — no audio decoding involved
+- Not used for any video encoding/writing operations (FFmpeg handles all writes)
 
 **PySceneDetect (Scene Detection)**
 - ContentDetector with configurable threshold (10-50 range)

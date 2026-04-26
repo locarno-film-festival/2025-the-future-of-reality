@@ -54,7 +54,7 @@ The Music Video Generator has been enhanced to v2.1 with audio preservation and 
 - **Clip trimming**: FFmpeg trims clips to beat duration
 - Completely bypasses MoviePy's problematic logger/subprocess handling
 - ffprobe used for video duration and audio stream detection
-- MoviePy only used for thumbnails and scene analysis (read-only operations)
+- OpenCV used for thumbnails and per-scene frame analysis (read-only frame reads)
 
 **Audio Workflow**
 - Preparation: Film clips retain original audio (extracted via FFmpeg)
