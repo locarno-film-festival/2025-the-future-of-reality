@@ -9,7 +9,6 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "librosa",
-        "moviepy",
         "scenedetect[opencv]",
         "numpy",
         "matplotlib",

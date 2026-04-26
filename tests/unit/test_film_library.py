@@ -3,8 +3,21 @@
 import pytest
 import json
 import os
+import numpy as np
 from pathlib import Path
 from music_video_generator.film_library import FilmLibrary
+
+
+TEST_ASSETS_DIR = Path(__file__).parent.parent.parent / "test-assets"
+
+
+@pytest.fixture
+def film_library_with_video(tmp_path):
+    """FilmLibrary instance backed by the real test video."""
+    video_path = TEST_ASSETS_DIR / "test_video.mp4"
+    if not video_path.exists():
+        pytest.skip("Test video not available")
+    return FilmLibrary(str(video_path), clips_library_dir=str(tmp_path / "lib"))
 
 
 class TestFilmLibrary:
@@ -266,3 +279,23 @@ class TestFilmLibrary:
         assert success is True
         assert len(library2.scenes) == 1
         assert library2.scenes[0]["id"] == 0
+
+
+def test_get_frame_at_time(film_library_with_video):
+    """Test that _get_frame_at_time returns a valid numpy array."""
+    frame = film_library_with_video._get_frame_at_time(1.0)
+    assert frame is not None
+    assert isinstance(frame, np.ndarray)
+    assert len(frame.shape) == 3  # height, width, channels
+    assert frame.shape[2] == 3   # RGB
+
+
+def test_get_film_properties(film_library_with_video):
+    """Test that _get_film_properties returns valid metadata."""
+    props = film_library_with_video._get_film_properties()
+    assert "duration" in props
+    assert "resolution" in props
+    assert "fps" in props
+    assert props["duration"] > 0
+    assert "x" in props["resolution"]
+    assert props["fps"] > 0

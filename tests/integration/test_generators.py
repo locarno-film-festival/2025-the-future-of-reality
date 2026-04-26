@@ -20,10 +20,6 @@ class TestMusicVideoGenerators:
     ):
         """Test UltraRobustArchivalTool with basic inputs."""
         pytest.importorskip("librosa")
-        try:
-            from moviepy import VideoFileClip
-        except ImportError:
-            pytest.skip("moviepy not available")
         pytest.importorskip("scenedetect")
 
         # Skip if test assets don't exist
@@ -61,10 +57,6 @@ class TestMusicVideoGenerators:
     ):
         """Test premiere style archival engine."""
         pytest.importorskip("librosa")
-        try:
-            from moviepy import VideoFileClip
-        except ImportError:
-            pytest.skip("moviepy not available")
 
         # Skip if test assets don't exist
         if not test_video_path.exists() or not test_audio_path.exists():
@@ -91,10 +83,6 @@ class TestMusicVideoGenerators:
     ):
         """Test robust music video generator."""
         pytest.importorskip("librosa")
-        try:
-            from moviepy import VideoFileClip
-        except ImportError:
-            pytest.skip("moviepy not available")
 
         # Skip if test assets don't exist
         if not test_video_path.exists() or not test_audio_path.exists():
