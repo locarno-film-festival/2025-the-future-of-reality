@@ -14,7 +14,6 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="scenedete
 
 from scenedetect import VideoManager, SceneManager
 from scenedetect.detectors import ContentDetector, AdaptiveDetector
-from moviepy.editor import VideoFileClip
 import cv2
 import numpy as np
 
@@ -354,6 +353,73 @@ class FilmLibrary:
 
         return clips_exported
 
+    def _get_frame_at_time(self, time_seconds):
+        """Extract a single frame at the given time using OpenCV.
+
+        Args:
+            time_seconds: Time position in seconds
+
+        Returns:
+            numpy.ndarray: Frame in RGB format, or None on failure
+        """
+        cap = cv2.VideoCapture(self.film_path)
+        try:
+            cap.set(cv2.CAP_PROP_POS_MSEC, time_seconds * 1000)
+            ret, frame = cap.read()
+            if not ret:
+                return None
+            # OpenCV reads BGR, convert to RGB
+            return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        finally:
+            cap.release()
+
+    def _get_film_properties(self):
+        """Get film properties using ffprobe.
+
+        Returns:
+            dict: Film properties (duration, resolution, fps, codec)
+        """
+        defaults = {
+            "duration": 0.0,
+            "resolution": "unknown",
+            "fps": 0.0,
+            "codec": "unknown",
+        }
+        try:
+            cmd = [
+                "ffprobe",
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height,r_frame_rate,codec_name",
+                "-show_entries", "format=duration",
+                "-of", "json",
+                self.film_path,
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                return defaults
+
+            data = json.loads(result.stdout)
+            stream = data.get("streams", [{}])[0]
+            fmt = data.get("format", {})
+
+            # Parse frame rate (e.g. "30/1" or "24000/1001")
+            fps_str = stream.get("r_frame_rate", "0/1")
+            num, den = fps_str.split("/")
+            fps = float(num) / float(den) if float(den) != 0 else 0.0
+
+            width = stream.get("width", 0)
+            height = stream.get("height", 0)
+
+            return {
+                "duration": self.safe_float(fmt.get("duration", 0.0)),
+                "resolution": f"{width}x{height}" if width and height else "unknown",
+                "fps": round(fps, 2),
+                "codec": stream.get("codec_name", "unknown"),
+            }
+        except Exception:
+            return defaults
+
     def _get_video_duration(self):
         """Get video duration using ffprobe."""
         try:
@@ -441,59 +507,40 @@ class FilmLibrary:
             return False
 
     def generate_thumbnails(self, scenes):
-        """Generate thumbnail images for each scene.
-
-        Args:
-            scenes: List of scene metadata dictionaries
-        """
-        # Validate input
+        """Generate thumbnail images for each scene."""
         if not scenes or not isinstance(scenes, list):
             print("   ✗ No scenes provided for thumbnail generation")
             return
 
         print(f"\n🖼️  Generating thumbnails for {len(scenes)} scenes...")
-
-        # Ensure thumbnails directory exists
         self.thumbnails_dir.mkdir(parents=True, exist_ok=True)
 
-        try:
-            video = VideoFileClip(self.film_path, audio=False)
-
-            for i, scene in enumerate(scenes):
-                try:
-                    # Get middle frame of scene
-                    middle_time = (scene["start"] + scene["end"]) / 2
-                    frame = video.get_frame(middle_time)
-
-                    # Save thumbnail
-                    thumb_path = self.thumbnails_dir / scene["thumbnail_filename"]
-                    thumb_height = 120
-                    aspect_ratio = frame.shape[1] / frame.shape[0]
-                    thumb_width = int(thumb_height * aspect_ratio)
-                    thumb = cv2.resize(frame, (thumb_width, thumb_height))
-                    thumb_bgr = cv2.cvtColor(thumb, cv2.COLOR_RGB2BGR)
-                    cv2.imwrite(str(thumb_path), thumb_bgr)
-
-                except Exception as e:
-                    print(f"   ⚠ Failed to generate thumbnail for scene {i}: {e}")
+        generated = 0
+        for i, scene in enumerate(scenes):
+            try:
+                middle_time = (scene["start"] + scene["end"]) / 2
+                frame = self._get_frame_at_time(middle_time)
+                if frame is None:
+                    print(f"   ⚠ Failed to get frame for scene {i}")
                     continue
 
-            video.close()
-            print(f"   ✓ Generated {len(scenes)} thumbnails")
+                thumb_path = self.thumbnails_dir / scene["thumbnail_filename"]
+                thumb_height = 120
+                aspect_ratio = frame.shape[1] / frame.shape[0]
+                thumb_width = int(thumb_height * aspect_ratio)
+                thumb = cv2.resize(frame, (thumb_width, thumb_height))
+                thumb_bgr = cv2.cvtColor(thumb, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(str(thumb_path), thumb_bgr)
+                generated += 1
 
-        except Exception as e:
-            print(f"   ✗ Thumbnail generation failed: {e}")
+            except Exception as e:
+                print(f"   ⚠ Failed to generate thumbnail for scene {i}: {e}")
+                continue
+
+        print(f"   ✓ Generated {generated} thumbnails")
 
     def analyze_scenes(self, scenes):
-        """Add color, brightness, pace analysis to scene metadata.
-
-        Args:
-            scenes: List of scene metadata dictionaries
-
-        Returns:
-            list: Scenes with added analysis metadata
-        """
-        # Validate input
+        """Add color, brightness, pace analysis to scene metadata."""
         if not scenes or not isinstance(scenes, list):
             print("   ✗ No scenes provided for analysis")
             return scenes
@@ -501,28 +548,27 @@ class FilmLibrary:
         print(f"\n🔍 Analyzing {len(scenes)} scenes...")
 
         try:
-            video = VideoFileClip(self.film_path, audio=False)
-            video_duration = video.duration
+            props = self._get_film_properties()
+            video_duration = props["duration"]
             failed_analyses = 0
 
             for scene in scenes:
                 try:
-                    # Get middle frame
                     middle_time = (scene["start"] + scene["end"]) / 2
-                    frame = video.get_frame(middle_time)
+                    frame = self._get_frame_at_time(middle_time)
 
-                    # Color analysis
+                    if frame is None:
+                        raise ValueError("Could not extract frame")
+
                     avg_color = np.mean(frame, axis=(0, 1))
                     scene["avg_color_rgb"] = avg_color.tolist()
                     scene["avg_color_hex"] = "#{:02x}{:02x}{:02x}".format(
                         int(avg_color[0]), int(avg_color[1]), int(avg_color[2])
                     )
 
-                    # Brightness analysis
                     gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
                     scene["avg_brightness"] = float(np.mean(gray))
 
-                    # Pace analysis
                     duration = scene["duration"]
                     if duration < 2:
                         scene["pace"] = "fast"
@@ -531,11 +577,11 @@ class FilmLibrary:
                     else:
                         scene["pace"] = "medium"
 
-                    # Position ratio in film
-                    scene["position_ratio"] = scene["start"] / video_duration
+                    scene["position_ratio"] = (
+                        scene["start"] / video_duration if video_duration > 0 else 0.0
+                    )
 
-                except Exception as e:
-                    # Set defaults on failure
+                except Exception:
                     scene["avg_brightness"] = 0.0
                     scene["avg_color_rgb"] = [0.0, 0.0, 0.0]
                     scene["avg_color_hex"] = "#000000"
@@ -544,7 +590,6 @@ class FilmLibrary:
                     failed_analyses += 1
                     continue
 
-            video.close()
             print(f"   ✓ Analyzed {len(scenes)} scenes")
             if failed_analyses > 0:
                 print(f"   ⚠ Failed to analyze {failed_analyses} scenes")
@@ -558,29 +603,10 @@ class FilmLibrary:
     def save_metadata(self):
         """Save metadata.json to clips_library/{film_name}/"""
         print(f"\n💾 Saving metadata...")
-
-        # Ensure directory exists
         self.library_dir.mkdir(parents=True, exist_ok=True)
 
-        # Get film properties
-        try:
-            video = VideoFileClip(self.film_path, audio=False)
-            film_properties = {
-                "duration": self.safe_float(video.duration),
-                "resolution": f"{video.w}x{video.h}",
-                "fps": self.safe_float(video.fps),
-                "codec": getattr(video, "codec", "unknown"),
-            }
-            video.close()
-        except Exception:
-            film_properties = {
-                "duration": 0.0,
-                "resolution": "unknown",
-                "fps": 0.0,
-                "codec": "unknown",
-            }
+        film_properties = self._get_film_properties()
 
-        # Build metadata
         metadata = {
             "film_path": self.film_path,
             "film_name": self.film_name,
@@ -596,15 +622,12 @@ class FilmLibrary:
             "total_scenes": len(self.scenes),
         }
 
-        # Save to JSON
         metadata_path = self.library_dir / "metadata.json"
         try:
             with open(metadata_path, "w") as f:
                 json.dump(metadata, f, indent=2)
-
             print(f"   ✓ Saved metadata: {metadata_path}")
             self.metadata = metadata
-
         except IOError as e:
             print(f"   ✗ Failed to save metadata: {e}")
 

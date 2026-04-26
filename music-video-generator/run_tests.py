@@ -19,7 +19,6 @@ def check_dependencies():
     required_modules = [
         ("pytest", "pytest"),
         ("librosa", "librosa"),
-        ("moviepy", "moviepy"),
         ("scenedetect", "scenedetect"),
         ("cv2", "opencv-python"),
         ("numpy", "numpy"),

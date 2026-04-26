@@ -82,15 +82,13 @@ def mock_librosa_data():
 @pytest.fixture(scope="session")
 def test_requirements():
     """Check that all required dependencies are available."""
-    required_modules = ["librosa", "moviepy", "scenedetect", "opencv", "numpy"]
+    required_modules = ["librosa", "scenedetect", "opencv", "numpy"]
 
     missing_modules = []
     for module in required_modules:
         try:
             if module == "opencv":
                 import cv2
-            elif module == "moviepy":
-                from moviepy.editor import VideoFileClip
             else:
                 __import__(module)
         except ImportError:

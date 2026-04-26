@@ -10,7 +10,7 @@ This is a **Music Video Generation & Archival Remix Engine** project that create
 
 Install required libraries with:
 ```bash
-pip install librosa moviepy scenedetect[opencv] numpy matplotlib opencv-python
+pip install librosa scenedetect[opencv] numpy matplotlib opencv-python
 ```
 
 **Note:** FFmpeg must be installed on your system for video processing.
@@ -94,7 +94,7 @@ python tests/utils/create_test_video.py
 - Four scene selection strategies: progressive, random, forward_only, no_repeat
 - Beat-skip parameter for controlling cut frequency
 - CLI interface with comprehensive options
-- **Direct FFmpeg integration** for reliable clip extraction (bypasses MoviePy's subprocess issues)
+- **Direct FFmpeg integration** for reliable clip extraction
 
 ### Legacy Generators (in attic/)
 
@@ -112,7 +112,7 @@ Old generators moved to `attic/` directory:
 2. **Clip Extraction**: Uses **FFmpeg directly** (via subprocess) for reliable extraction with audio
 3. **Audio Analysis**: Uses librosa for beat detection and tempo analysis
 4. **Video Synchronization**: Maps video scenes to musical beats/timing
-5. **Output Generation**: Uses **FFmpeg** for clip trimming, concatenation, and audio attachment (no MoviePy for video encoding)
+5. **Output Generation**: Uses **FFmpeg** for clip trimming, concatenation, and audio attachment
 
 ### Data Flow
 
@@ -148,7 +148,7 @@ The v2.0 refactor introduced a clean modular architecture:
 - `setup.py` - Package installation configuration
 
 **Core Package (`music_video_generator/`):**
-- `film_library.py` - Film analysis and caching with metadata; uses **FFmpeg** for clip extraction (with audio); MoviePy only for thumbnails/analysis
+- `film_library.py` - Film analysis and caching with metadata; uses **FFmpeg** for clip extraction (with audio); **OpenCV** for thumbnails/analysis; **ffprobe** for film properties
 - `music_library.py` - Music analysis and caching (beat detection, BPM, tempo)
 - `music_video_generator.py` - Video generation with multiple strategies; uses **FFmpeg** for trimming, concatenation, and audio attachment
 - `cli.py` - Command-line interface
@@ -185,7 +185,7 @@ The project shows iterative development with multiple generator versions:
 - **Numpy formatting errors**: Use `safe_float()` and `safe_int()` helper methods
 - **Audio loading failures**: Test with librosa's built-in example first
 - **Scene detection problems**: Adjust ContentDetector threshold (default: 30.0)
-- **MoviePy crashes**: Ensure FFmpeg is properly installed and accessible
+- **FFmpeg not found**: Ensure FFmpeg is properly installed and accessible
 
 ## Development Patterns
 
