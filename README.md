@@ -20,10 +20,32 @@ An intelligent Music Video Generation & Archival Remix Engine that creates artis
 
 ## Installation
 
+### Virtual Environment (Recommended)
+
+It's recommended to install dependencies into an isolated Python virtual environment so they don't conflict with other projects or your system Python.
+
+```bash
+# Create a venv in the project root
+python3 -m venv .venv
+
+# Activate it
+# macOS / Linux
+source .venv/bin/activate
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+# Windows (cmd.exe)
+.venv\Scripts\activate.bat
+
+# Upgrade pip inside the venv
+pip install --upgrade pip
+```
+
+When the venv is active, your shell prompt will be prefixed with `(.venv)`. Run all subsequent `pip install` and `python` commands from inside the activated venv. To leave the venv later, run `deactivate`.
+
 ### Dependencies
 
 ```bash
-pip install librosa moviepy scenedetect[opencv] numpy matplotlib opencv-python scipy
+pip install librosa scenedetect[opencv] numpy matplotlib opencv-python scipy
 ```
 
 **FFmpeg is required** (used directly for clip extraction) and must be installed separately:
@@ -389,8 +411,7 @@ python music_video_generator.py --film movie.mp4 --song track.mp3 --strategy no_
 - Audio analysis with librosa (beat detection, tempo)
 - Scene-beat ratio validation
 - Strategy-based scene selection
-- Video assembly with MoviePy
-- FFmpeg final rendering
+- Video assembly and final rendering with FFmpeg (concat demuxer + audio attachment)
 
 ### Project Structure
 
@@ -484,16 +505,12 @@ All generators use `safe_float()` and `safe_int()` helpers to handle numpy type 
 
 ### Video Processing
 
-- Scene extraction: MoviePy VideoFileClip
-- Clip assembly: MoviePy concatenate_videoclips
-- Final render: FFmpeg direct rendering (more reliable than MoviePy)
+- Clip extraction: FFmpeg via subprocess (audio preserved)
+- Thumbnails & frame analysis: OpenCV
+- Probing (duration, audio streams): ffprobe
+- Clip trimming, concatenation, and final render: FFmpeg (concat demuxer + audio attachment)
 
 ## Troubleshooting
-
-### MoviePy Audio Crashes
-
-**Symptom**: Segmentation fault or audio codec errors during final render
-**Solution**: The tool uses FFmpeg direct rendering to avoid this issue
 
 ### Scene Detection Memory Issues
 
@@ -554,5 +571,5 @@ Automatically runs before each commit:
 Built with:
 - [PySceneDetect](https://github.com/Breakthrough/PySceneDetect) - Scene detection
 - [librosa](https://librosa.org/) - Audio analysis
-- [MoviePy](https://zulko.github.io/moviepy/) - Video editing
-- [FFmpeg](https://ffmpeg.org/) - Video encoding
+- [OpenCV](https://opencv.org/) - Frame extraction and thumbnails
+- [FFmpeg](https://ffmpeg.org/) - Clip extraction, assembly, and encoding
