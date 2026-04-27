@@ -1,11 +1,136 @@
 #!/usr/bin/env python3
 """Command-line interface for Music Video Generator."""
+
 import argparse
+import glob
+import json
+import os
+import re
+import subprocess
 import sys
 from pathlib import Path
 from .film_library import FilmLibrary
 from .music_library import MusicLibrary
 from .music_video_generator import MusicVideoGenerator
+
+
+def download_song_from_url(url, music_library_dir="music_library"):
+    """Download audio (WAV) and English auto-captions (SRT) from a YouTube URL using yt-dlp.
+
+    Args:
+        url: YouTube URL
+        music_library_dir: Base directory for music library storage
+
+    Returns:
+        tuple: (audio_path, subtitle_path_or_None, song_name)
+
+    Raises:
+        RuntimeError: If yt-dlp is not installed or download fails
+    """
+    # Get video metadata to derive song name
+    try:
+        result = subprocess.run(
+            ["yt-dlp", "--print", "%(title)s", "--no-download", url],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        title = result.stdout.strip()
+    except FileNotFoundError:
+        raise RuntimeError(
+            "yt-dlp is not installed. Install it with: pip install yt-dlp"
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to fetch video metadata: {e.stderr}")
+
+    # Sanitize title for filesystem
+    song_name = re.sub(r"[^\w\s-]", "", title).strip()
+    song_name = re.sub(r"[\s]+", "-", song_name).lower()
+    if not song_name:
+        song_name = "downloaded-song"
+
+    song_dir = Path(music_library_dir) / song_name
+    song_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check for cached audio (any format)
+    existing_audio = glob.glob(str(song_dir / "song.*"))
+    if existing_audio:
+        audio_path = existing_audio[0]
+        print(f"📦 Using cached audio: {audio_path}")
+    else:
+        print(f"⬇️  Downloading audio...")
+        output_template = str(song_dir / "song.%(ext)s")
+        try:
+            subprocess.run(
+                ["yt-dlp", "-f", "bestaudio", "-o", output_template, url],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Audio download failed: {e.stderr}")
+
+        downloaded = glob.glob(str(song_dir / "song.*"))
+        if not downloaded:
+            raise RuntimeError("Audio download produced no output file")
+        audio_path = downloaded[0]
+        print(f"   ✓ Downloaded: {audio_path}")
+
+    # Download English auto-captions
+    subtitle_path = None
+    srt_path = str(song_dir / "subtitles.srt")
+    if os.path.exists(srt_path):
+        subtitle_path = srt_path
+        print(f"📦 Using cached subtitles: {subtitle_path}")
+    else:
+        print(f"⬇️  Downloading English auto-captions...")
+        try:
+            subprocess.run(
+                [
+                    "yt-dlp",
+                    "--write-auto-sub",
+                    "--sub-lang",
+                    "en",
+                    "--skip-download",
+                    "-o",
+                    str(song_dir / "subtitles"),
+                    url,
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError:
+            pass  # Subtitles may not be available
+
+        # Find downloaded subtitle file (any format: .srt, .vtt, etc.)
+        found_subs = glob.glob(str(song_dir / "subtitles*.*"))
+        # Exclude metadata files (macOS ._* files)
+        found_subs = [s for s in found_subs if not os.path.basename(s).startswith("._")]
+        if found_subs:
+            raw_sub = found_subs[0]
+            # Convert to SRT using FFmpeg if not already SRT
+            if not raw_sub.endswith(".srt"):
+                print(f"   Converting {Path(raw_sub).suffix} to SRT...")
+                try:
+                    subprocess.run(
+                        ["ffmpeg", "-y", "-i", raw_sub, srt_path],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                    os.remove(raw_sub)
+                    subtitle_path = srt_path
+                except subprocess.CalledProcessError:
+                    print(f"   ⚠ Subtitle conversion failed, using raw file")
+                    subtitle_path = raw_sub
+            else:
+                subtitle_path = raw_sub
+            print(f"   ✓ Subtitles ready: {subtitle_path}")
+        else:
+            print(f"   ⚠ No English subtitles available for this video")
+
+    return str(audio_path), subtitle_path, song_name
 
 
 def main():
@@ -39,6 +164,16 @@ Examples:
     # Required arguments
     parser.add_argument("--film", type=str, help="Path to film/video file")
     parser.add_argument("--song", type=str, help="Path to song/audio file")
+    parser.add_argument(
+        "--song-url",
+        type=str,
+        help="YouTube URL to download audio + subtitles from (mutually exclusive with --song)",
+    )
+    parser.add_argument(
+        "--no-subtitles",
+        action="store_true",
+        help="Disable automatic subtitle burn-in when using --song-url",
+    )
 
     # Scene detection parameters
     parser.add_argument(
@@ -113,26 +248,42 @@ Examples:
 
     args = parser.parse_args()
 
+    # Validate --song and --song-url mutual exclusivity
+    if args.song and args.song_url:
+        parser.error("--song and --song-url are mutually exclusive")
+
+    # Handle --song-url: download audio + subtitles
+    subtitle_path = None
+    url_song_name = None
+    if args.song_url:
+        try:
+            audio_path, subtitle_path, url_song_name = download_song_from_url(
+                args.song_url, args.music_library_dir
+            )
+            args.song = audio_path
+        except RuntimeError as e:
+            parser.error(str(e))
+
     # Validate arguments
     if not args.prepare:
         # For generation mode, both --film and --song are required
         if not args.film:
             parser.error("--film is required for music video generation")
         if not args.song:
-            parser.error("--song is required for music video generation")
+            parser.error(
+                "--song is required for music video generation (use --song or --song-url)"
+            )
     else:
         # For preparation mode, at least one of --film or --song is required
         if not args.film and not args.song:
-            parser.error("--prepare requires at least --film or --song")
+            parser.error("--prepare requires at least --film, --song, or --song-url")
 
     # Print header
-    print(
-        """
+    print("""
     ╔══════════════════════════════════════════════════════════════╗
     ║         MUSIC VIDEO GENERATOR v2.0                           ║
     ╠══════════════════════════════════════════════════════════════╣
-    """
-    )
+    """)
 
     try:
         library = None
@@ -225,6 +376,7 @@ Examples:
                 args.song,
                 force_regenerate=args.force_regenerate_music,
                 music_library_dir=args.music_library_dir,
+                song_name=url_song_name,
             )
 
             # Check cache or generate
@@ -241,7 +393,7 @@ Examples:
                     return 1
 
                 # Save metadata
-                music_lib.save_metadata(analysis)
+                music_lib.save_metadata(analysis, subtitle_path=subtitle_path)
 
             # If --prepare only, stop here
             if args.prepare:
@@ -267,6 +419,7 @@ Examples:
             beat_skip=args.beat_skip,
             output_dir=args.output_dir,
             music_library=music_lib,
+            subtitle_path=subtitle_path if not args.no_subtitles else None,
         )
 
         # Analyze audio

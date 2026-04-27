@@ -1,5 +1,6 @@
 # macOS & editors
 .DS_Store
+._*
 *.swp
 .vscode/
 .idea/
@@ -23,6 +24,8 @@ music/
 clips_library/
 music_library/
 music_videos/
+scratchpad/
+input/
 
 # Ignore all media files everywhere
 *.mp3
