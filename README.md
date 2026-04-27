@@ -45,8 +45,10 @@ When the venv is active, your shell prompt will be prefixed with `(.venv)`. Run 
 ### Dependencies
 
 ```bash
-pip install librosa scenedetect[opencv] numpy matplotlib opencv-python scipy
+pip install librosa 'scenedetect[opencv]' numpy matplotlib opencv-python scipy
 ```
+
+> **Note:** Quote `'scenedetect[opencv]'` in zsh (the macOS default shell) — unquoted square brackets are interpreted as a glob character class and pip won't see the argument.
 
 **FFmpeg is required** (used directly for clip extraction) and must be installed separately:
 ```bash

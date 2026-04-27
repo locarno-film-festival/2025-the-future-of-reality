@@ -10,8 +10,10 @@ This is a **Music Video Generation & Archival Remix Engine** project that create
 
 Install required libraries with:
 ```bash
-pip install librosa scenedetect[opencv] numpy matplotlib opencv-python
+pip install librosa 'scenedetect[opencv]' numpy matplotlib opencv-python
 ```
+
+(Quote `'scenedetect[opencv]'` in zsh — bare brackets are interpreted as a glob.)
 
 **Note:** FFmpeg must be installed on your system for video processing.
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """MusicLibrary class for audio analysis and caching."""
+
 import os
 import sys
 import json
@@ -30,7 +31,11 @@ class MusicLibrary:
     """Manages audio analysis and caching."""
 
     def __init__(
-        self, song_path, force_regenerate=False, music_library_dir="music_library"
+        self,
+        song_path,
+        force_regenerate=False,
+        music_library_dir="music_library",
+        song_name=None,
     ):
         """Initialize MusicLibrary.
 
@@ -38,13 +43,14 @@ class MusicLibrary:
             song_path: Path to audio file
             force_regenerate: Force regeneration even if cache exists
             music_library_dir: Base directory for music library storage
+            song_name: Override for library directory name (default: audio filename stem)
         """
         # Validate song exists
         if not os.path.exists(song_path):
             raise FileNotFoundError(f"Song not found: {song_path}")
 
         self.song_path = str(song_path)
-        self.song_name = Path(song_path).stem
+        self.song_name = song_name or Path(song_path).stem
         self.force_regenerate = force_regenerate
 
         # Set up library directory
@@ -53,6 +59,7 @@ class MusicLibrary:
         self.beats = []
         self.beat_times = []
         self.metadata = {}
+        self.subtitle_path = None
 
     def safe_float(self, value):
         """Safely convert value to Python float.
@@ -128,11 +135,18 @@ class MusicLibrary:
             self.beat_times = []
             return False
 
+        # Load subtitle path if stored
+        stored_subtitle = self.metadata.get("subtitle_path")
+        if stored_subtitle and os.path.exists(stored_subtitle):
+            self.subtitle_path = stored_subtitle
+
         print(f"✓ Loaded audio analysis from cache")
         print(f"  Cache location: {self.library_dir}")
         print(f"  Beats detected: {len(self.beat_times)}")
         print(f"  BPM: {self.metadata.get('bpm', 0):.1f}")
         print(f"  Duration: {self.metadata.get('duration', 0):.1f}s")
+        if self.subtitle_path:
+            print(f"  Subtitles: {self.subtitle_path}")
 
         return True
 
@@ -193,13 +207,17 @@ class MusicLibrary:
                 "sample_rate": 22050,
             }
 
-    def save_metadata(self, analysis):
+    def save_metadata(self, analysis, subtitle_path=None):
         """Save metadata.json to music_library/{song_name}/
 
         Args:
             analysis: Audio analysis dictionary
+            subtitle_path: Optional path to subtitle SRT file
         """
         print(f"\n💾 Saving metadata...")
+
+        if subtitle_path:
+            self.subtitle_path = subtitle_path
 
         # Ensure directory exists
         self.library_dir.mkdir(parents=True, exist_ok=True)
@@ -215,6 +233,7 @@ class MusicLibrary:
             "beats": analysis["beats"],
             "tempo_confidence": analysis["tempo_confidence"],
             "sample_rate": analysis["sample_rate"],
+            "subtitle_path": self.subtitle_path,
         }
 
         # Save to JSON
