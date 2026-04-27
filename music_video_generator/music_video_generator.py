@@ -104,8 +104,7 @@ class MusicVideoGenerator:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         song_slug = f"{self.artist}-{self.title}" if self.artist else self.title
         self.output_dir = (
-            Path(output_dir)
-            / f"{self.film_slug}_{song_slug}_{strategy}_{timestamp}"
+            Path(output_dir) / f"{self.film_slug}_{song_slug}_{strategy}_{timestamp}"
         )
 
         self.subtitle_path = subtitle_path
@@ -276,6 +275,27 @@ class MusicVideoGenerator:
         # Apply beat_skip
         selected_beats = self.beat_times[:: self.beat_skip]
 
+        # Prepend 0.0 so the first segment covers the intro before the first beat
+        selected_beats = list(selected_beats)
+        if not selected_beats or selected_beats[0] > 0:
+            selected_beats.insert(0, 0.0)
+
+        # Fill gap between last beat and song end with regular intervals
+        song_duration = self.music_analysis.get("duration", 0)
+        if song_duration > 0 and selected_beats and selected_beats[-1] < song_duration:
+            # Use average beat interval to generate fill beats
+            if len(selected_beats) >= 2:
+                avg_interval = (selected_beats[-1] - selected_beats[0]) / (
+                    len(selected_beats) - 1
+                )
+            else:
+                avg_interval = 0.5
+            t = selected_beats[-1] + avg_interval
+            while t < song_duration:
+                selected_beats.append(t)
+                t += avg_interval
+            selected_beats.append(song_duration)
+
         print(f"   Available scenes: {len(scenes)}")
         print(f"   Beats to use: {len(selected_beats)} (every {self.beat_skip} beat)")
 
@@ -293,6 +313,33 @@ class MusicVideoGenerator:
 
         self.selected_scenes = selected
         return selected
+
+    def _find_long_enough_scene(self, scenes, preferred_index, min_duration):
+        """Find a scene near preferred_index that is at least min_duration long.
+
+        Searches outward from the preferred index. Falls back to the preferred
+        index if nothing long enough is found.
+
+        Args:
+            scenes: List of scene dicts with 'duration' key
+            preferred_index: Ideal scene index
+            min_duration: Minimum required duration in seconds
+
+        Returns:
+            tuple: (scene_dict, actual_index)
+        """
+        n = len(scenes)
+        if scenes[preferred_index]["duration"] >= min_duration:
+            return scenes[preferred_index], preferred_index
+
+        # Search outward from preferred index
+        for offset in range(1, n):
+            for idx in [preferred_index + offset, preferred_index - offset]:
+                if 0 <= idx < n and scenes[idx]["duration"] >= min_duration:
+                    return scenes[idx], idx
+
+        # Nothing long enough, use preferred anyway
+        return scenes[preferred_index], preferred_index
 
     def _select_progressive(self, scenes, beat_times):
         """Evenly distributed chronological sampling.
@@ -312,10 +359,12 @@ class MusicVideoGenerator:
             beat_end = beat_times[i + 1]
             beat_duration = beat_end - beat_start
 
-            # Map beat index to scene position
+            # Map beat index to scene position, preferring clips long enough
             scene_index = int((i / num_beats) * len(scenes))
             scene_index = min(scene_index, len(scenes) - 1)
-            selected_scene = scenes[scene_index]
+            selected_scene, _ = self._find_long_enough_scene(
+                scenes, scene_index, beat_duration
+            )
 
             mappings.append(
                 {
@@ -347,8 +396,11 @@ class MusicVideoGenerator:
             beat_end = beat_times[i + 1]
             beat_duration = beat_end - beat_start
 
-            # Random selection
-            selected_scene = scenes[np.random.randint(0, len(scenes))]
+            # Random selection, retry if clip is too short
+            scene_index = np.random.randint(0, len(scenes))
+            selected_scene, _ = self._find_long_enough_scene(
+                scenes, scene_index, beat_duration
+            )
 
             mappings.append(
                 {
@@ -381,8 +433,10 @@ class MusicVideoGenerator:
             beat_end = beat_times[i + 1]
             beat_duration = beat_end - beat_start
 
-            # Use current scene and advance
-            selected_scene = scenes[current_scene_index]
+            # Use current scene, but find one long enough nearby
+            selected_scene, actual_index = self._find_long_enough_scene(
+                scenes, current_scene_index, beat_duration
+            )
 
             mappings.append(
                 {
@@ -422,8 +476,15 @@ class MusicVideoGenerator:
             if not unused_scenes:
                 unused_scenes = list(scenes)
 
-            # Random selection from unused pool
-            scene_index = np.random.randint(0, len(unused_scenes))
+            # Random selection from unused pool, prefer long enough clips
+            # Filter for clips long enough first
+            long_enough = [
+                j for j, s in enumerate(unused_scenes) if s["duration"] >= beat_duration
+            ]
+            if long_enough:
+                scene_index = long_enough[np.random.randint(0, len(long_enough))]
+            else:
+                scene_index = np.random.randint(0, len(unused_scenes))
             selected_scene = unused_scenes.pop(scene_index)
 
             mappings.append(
@@ -546,9 +607,7 @@ class MusicVideoGenerator:
             # Step 5: Burn in subtitles if available
             if self.subtitle_path and os.path.exists(self.subtitle_path):
                 print(f"   Burning in subtitles...")
-                subtitled_output = (
-                    self.output_dir / f"{self.basename}_subtitled.mp4"
-                )
+                subtitled_output = self.output_dir / f"{self.basename}_subtitled.mp4"
                 sub_success = self._ffmpeg_burn_subtitles(
                     output_path, self.subtitle_path, subtitled_output
                 )
@@ -608,7 +667,11 @@ class MusicVideoGenerator:
                 str(duration),
                 "-an",  # No audio (will add music later)
                 "-c:v",
-                "copy",  # Stream copy (fast, no re-encode needed)
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "18",  # Re-encode for frame-accurate trimming
                 str(output_path),
             ]
 
@@ -644,7 +707,7 @@ class MusicVideoGenerator:
                 "-i",
                 str(concat_file),
                 "-c",
-                "copy",  # Stream copy (fast, clips from same source are compatible)
+                "copy",  # Stream copy (clips are already re-encoded with same params)
                 str(output_path),
             ]
 
@@ -708,8 +771,8 @@ class MusicVideoGenerator:
             bool: True if successful
         """
         try:
-            # Get video duration to trim audio
-            duration_cmd = [
+            # Get audio duration - this is the master duration
+            audio_duration_cmd = [
                 "ffprobe",
                 "-v",
                 "error",
@@ -717,37 +780,67 @@ class MusicVideoGenerator:
                 "format=duration",
                 "-of",
                 "default=noprint_wrappers=1:nokey=1",
+                str(audio_path),
+            ]
+            audio_duration_result = subprocess.run(
+                audio_duration_cmd, capture_output=True, text=True
+            )
+            audio_duration = float(audio_duration_result.stdout.strip())
+
+            # Get video resolution for black padding
+            res_cmd = [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=width,height",
+                "-of",
+                "csv=p=0",
                 str(video_path),
             ]
-            duration_result = subprocess.run(
-                duration_cmd, capture_output=True, text=True
-            )
-            video_duration = float(duration_result.stdout.strip())
+            res_result = subprocess.run(res_cmd, capture_output=True, text=True)
+            width, height = res_result.stdout.strip().split(",")
 
+            # Use a black color source as base, overlay the video on top,
+            # so output is always exactly audio_duration long
             cmd = [
                 "ffmpeg",
                 "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=c=black:s={width}x{height}:d={audio_duration}:r=24",
                 "-i",
                 str(video_path),
                 "-i",
                 str(audio_path),
+                "-filter_complex",
+                "[0:v][1:v]overlay=eof_action=pass[v]",
+                "-map",
+                "[v]",
+                "-map",
+                "2:a",
                 "-t",
-                str(video_duration),  # Trim to video length
-                "-map",
-                "0:v",  # Video from first input
-                "-map",
-                "1:a",  # Audio from second input
+                str(audio_duration),
                 "-c:v",
-                "copy",  # Copy video (no re-encode)
+                "libx264",
+                "-preset",
+                "fast",
+                "-crf",
+                "18",
                 "-c:a",
                 "aac",
                 "-b:a",
                 "192k",
-                "-shortest",  # End when shortest stream ends
                 str(output_path),
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"   FFmpeg add audio error: {result.stderr[:500]}")
             return result.returncode == 0
-        except Exception:
+        except Exception as e:
+            print(f"   FFmpeg add audio exception: {e}")
             return False
